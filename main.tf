@@ -75,6 +75,40 @@ resource "azurerm_lb" "lb" {
   }
 }
 
+# Create a Public IP for the Virtual Machines
+resource "azurerm_public_ip" "vm01mgmtpip" {
+  name                         = "${var.prefix}-vm01-mgmt-pip"
+  location                     = azurerm_resource_group.main.location
+  resource_group_name          = azurerm_resource_group.main.name
+  allocation_method = "Dynamic"
+
+  tags = {
+    Name           = "${var.environment}-vm01-mgmt-public-ip"
+    environment    = var.environment
+    owner          = var.owner
+    group          = var.group
+    costcenter     = var.costcenter
+    application    = var.application
+  }
+}
+
+resource "azurerm_public_ip" "vm02mgmtpip" {
+  name                         = "${var.prefix}-vm02-mgmt-pip"
+  location                     = azurerm_resource_group.main.location
+  resource_group_name          = azurerm_resource_group.main.name
+  allocation_method = "Dynamic"
+
+  tags = {
+    Name           = "${var.environment}-vm02-mgmt-public-ip"
+    environment    = var.environment
+    owner          = var.owner
+    group          = var.group
+    costcenter     = var.costcenter
+    application    = var.application
+  }
+}
+
+
 resource "azurerm_lb_backend_address_pool" "backend_pool" {
   name                = "BackendPool1"
   resource_group_name = azurerm_resource_group.main.name
@@ -214,6 +248,7 @@ resource "azurerm_network_interface" "vm01-mgmt-nic" {
     subnet_id                     = azurerm_subnet.mgmt.id
     private_ip_address_allocation = "Static"
     private_ip_address            = var.f5vm01mgmt
+    public_ip_address_id          = azurerm_public_ip.vm01mgmtpip.id
   }
 
   tags = {
@@ -237,6 +272,7 @@ resource "azurerm_network_interface" "vm02-mgmt-nic" {
     subnet_id                     = azurerm_subnet.mgmt.id
     private_ip_address_allocation = "Static"
     private_ip_address            = var.f5vm02mgmt
+    public_ip_address_id          = azurerm_public_ip.vm02mgmtpip.id
   }
 
   tags = {
