@@ -210,6 +210,31 @@ resource "azurerm_network_security_group" "main" {
   }
 }
 
+ # Create the first network interface card for Management
+resource "azurerm_network_interface" "vm03-mgmt-nic" {
+  name                      = "${var.prefix}-vm03-mgmt-nic"
+  location                  = azurerm_resource_group.main.location
+  resource_group_name       = azurerm_resource_group.main.name
+  network_security_group_id = azurerm_network_security_group.main.id
+
+  ip_configuration {
+    name                          = "primary"
+    subnet_id                     = azurerm_subnet.Mgmt.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = var.f5vm03mgmt
+    public_ip_address_id          = azurerm_public_ip.vm03mgmtpip.id
+  }
+
+  tags = {
+    Name        = "${var.environment}-vm03-mgmt-int"
+    environment = var.environment
+    owner       = var.owner
+    group       = var.group
+    costcenter  = var.costcenter
+    application = var.application
+  }
+}
+
 # Create the first network interface card for Management 
 resource "azurerm_network_interface" "vm01-mgmt-nic" {
   name                      = "${var.prefix}-vm01-mgmt-nic"

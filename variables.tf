@@ -95,6 +95,19 @@ variable "f5vm02ext" {
 variable "f5vm02ext_sec" {
   default = "10.90.2.12"
 }
+variable "f5vm03mgmt" {
+  default = "10.90.1.100"
+}
+
+variable "f5vm03ext" {
+  default = "10.90.2.100"
+}
+
+variable "f5vm03ext_sec" {
+  default = "10.90.2.13"
+}
+
+
 
 variable "backend01ext" {
   default = "10.90.2.101"
