@@ -44,10 +44,6 @@ DO_FN=$(basename "$DO_URL")
 AS3_URL='${AS3_URL}'
 AS3_FN=$(basename "$AS3_URL")
 
-echo ${DO1_Document} | base64 -d > do1.json
-echo ${DO2_Document} | base64 -d > do2.json
-echo ${AS3_Document} | base64 -d > as3.json
-
 mkdir -p ${libs_dir}
 
 echo -e "\n"$(date) "Download Declarative Onboarding Pkg"
@@ -105,4 +101,5 @@ do
   fi
   sleep 10
 done
+
 

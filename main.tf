@@ -12,15 +12,15 @@ resource "azurerm_virtual_network" "main" {
   location            = azurerm_resource_group.main.location
 }
 
-# Create the Management Subnet within the Virtual Network
-resource "azurerm_subnet" "mgmt" {
-  name                 = "mgmt"
+# Create the first Subnet within the Virtual Network
+resource "azurerm_subnet" "Mgmt" {
+  name                 = "Mgmt"
   virtual_network_name = azurerm_virtual_network.main.name
   resource_group_name  = azurerm_resource_group.main.name
   address_prefix       = var.subnets["subnet1"]
 }
 
-# Create the External Subnet within the Virtual Network
+# Create the second Subnet within the Virtual Network
 resource "azurerm_subnet" "External" {
   name                 = "External"
   virtual_network_name = azurerm_virtual_network.main.name
@@ -28,23 +28,46 @@ resource "azurerm_subnet" "External" {
   address_prefix       = var.subnets["subnet2"]
 }
 
-# Create the Internal Subnet within the Virtual Network
-resource "azurerm_subnet" "Internal" {
-  name                 = "Internal"
-  virtual_network_name = azurerm_virtual_network.main.name
-  resource_group_name  = azurerm_resource_group.main.name
-  address_prefix       = var.subnets["subnet3"]
-}
-
 # Obtain Gateway IP for each Subnet
 locals {
-  depends_on = ["azurerm_subnet.mgmt", "azurerm_subnet.External"]
-  mgmt_gw    = cidrhost(azurerm_subnet.mgmt.address_prefix, 1)
+  depends_on = ["azurerm_subnet.Mgmt", "azurerm_subnet.External"]
+  mgmt_gw    = cidrhost(azurerm_subnet.Mgmt.address_prefix, 1)
   ext_gw     = cidrhost(azurerm_subnet.External.address_prefix, 1)
-  int_gw     = cidrhost(azurerm_subnet.Internal.address_prefix, 1)
 }
 
 # Create a Public IP for the Virtual Machines
+resource "azurerm_public_ip" "vm01mgmtpip" {
+  name                = "${var.prefix}-vm01-mgmt-pip"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Dynamic"
+
+  tags = {
+    Name        = "${var.environment}-vm01-mgmt-public-ip"
+    environment = var.environment
+    owner       = var.owner
+    group       = var.group
+    costcenter  = var.costcenter
+    application = var.application
+  }
+}
+
+resource "azurerm_public_ip" "vm02mgmtpip" {
+  name                = "${var.prefix}-vm02-mgmt-pip"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Dynamic"
+
+  tags = {
+    Name        = "${var.environment}-vm02-mgmt-public-ip"
+    environment = var.environment
+    owner       = var.owner
+    group       = var.group
+    costcenter  = var.costcenter
+    application = var.application
+  }
+}
+
 resource "azurerm_public_ip" "lbpip" {
   name                = "${var.prefix}-lb-pip"
   location            = azurerm_resource_group.main.location
@@ -75,40 +98,6 @@ resource "azurerm_lb" "lb" {
   }
 }
 
-# Create a Public IP for the Virtual Machines
-resource "azurerm_public_ip" "vm01mgmtpip" {
-  name                         = "${var.prefix}-vm01-mgmt-pip"
-  location                     = azurerm_resource_group.main.location
-  resource_group_name          = azurerm_resource_group.main.name
-  allocation_method = "Dynamic"
-
-  tags = {
-    Name           = "${var.environment}-vm01-mgmt-public-ip"
-    environment    = var.environment
-    owner          = var.owner
-    group          = var.group
-    costcenter     = var.costcenter
-    application    = var.application
-  }
-}
-
-resource "azurerm_public_ip" "vm02mgmtpip" {
-  name                         = "${var.prefix}-vm02-mgmt-pip"
-  location                     = azurerm_resource_group.main.location
-  resource_group_name          = azurerm_resource_group.main.name
-  allocation_method = "Dynamic"
-
-  tags = {
-    Name           = "${var.environment}-vm02-mgmt-public-ip"
-    environment    = var.environment
-    owner          = var.owner
-    group          = var.group
-    costcenter     = var.costcenter
-    application    = var.application
-  }
-}
-
-
 resource "azurerm_lb_backend_address_pool" "backend_pool" {
   name                = "BackendPool1"
   resource_group_name = azurerm_resource_group.main.name
@@ -120,33 +109,18 @@ resource "azurerm_lb_probe" "lb_probe" {
   loadbalancer_id     = azurerm_lb.lb.id
   name                = "tcpProbe"
   protocol            = "tcp"
-  port                = 443
+  port                = 8443
   interval_in_seconds = 5
   number_of_probes    = 2
 }
 
-resource "azurerm_lb_rule" "https_rule" {
-  name                           = "HTTPRule"
+resource "azurerm_lb_rule" "lb_rule" {
+  name                           = "LBRule"
   resource_group_name            = azurerm_resource_group.main.name
   loadbalancer_id                = azurerm_lb.lb.id
   protocol                       = "tcp"
   frontend_port                  = 443
-  backend_port                   = 443
-  frontend_ip_configuration_name = "LoadBalancerFrontEnd"
-  enable_floating_ip             = false
-  backend_address_pool_id        = azurerm_lb_backend_address_pool.backend_pool.id
-  idle_timeout_in_minutes        = 5
-  probe_id                       = azurerm_lb_probe.lb_probe.id
-  depends_on                     = [azurerm_lb_probe.lb_probe]
-}
-
-resource "azurerm_lb_rule" "ssh_rule" {
-  name                           = "SSHRule"
-  resource_group_name            = azurerm_resource_group.main.name
-  loadbalancer_id                = azurerm_lb.lb.id
-  protocol                       = "tcp"
-  frontend_port                  = 22
-  backend_port                   = 22
+  backend_port                   = 8443
   frontend_ip_configuration_name = "LoadBalancerFrontEnd"
   enable_floating_ip             = false
   backend_address_pool_id        = azurerm_lb_backend_address_pool.backend_pool.id
@@ -245,7 +219,7 @@ resource "azurerm_network_interface" "vm01-mgmt-nic" {
 
   ip_configuration {
     name                          = "primary"
-    subnet_id                     = azurerm_subnet.mgmt.id
+    subnet_id                     = azurerm_subnet.Mgmt.id
     private_ip_address_allocation = "Static"
     private_ip_address            = var.f5vm01mgmt
     public_ip_address_id          = azurerm_public_ip.vm01mgmtpip.id
@@ -269,7 +243,7 @@ resource "azurerm_network_interface" "vm02-mgmt-nic" {
 
   ip_configuration {
     name                          = "primary"
-    subnet_id                     = azurerm_subnet.mgmt.id
+    subnet_id                     = azurerm_subnet.Mgmt.id
     private_ip_address_allocation = "Static"
     private_ip_address            = var.f5vm02mgmt
     public_ip_address_id          = azurerm_public_ip.vm02mgmtpip.id
@@ -374,59 +348,6 @@ resource "azurerm_network_interface" "backend01-ext-nic" {
   }
 }
 
-# Create the third network interface card for Internal
-resource "azurerm_network_interface" "vm01-int-nic" {
-  name                      = "${var.prefix}-vm01-int-nic"
-  location                  = azurerm_resource_group.main.location
-  resource_group_name       = azurerm_resource_group.main.name
-  network_security_group_id = azurerm_network_security_group.main.id
-
-  #depends_on          = ["azurerm_lb_backend_address_pool.backend_pool"]
-
-  ip_configuration {
-    name                          = "primary"
-    subnet_id                     = azurerm_subnet.Internal.id
-    private_ip_address_allocation = "Static"
-    private_ip_address            = var.f5vm01int
-    primary                       = true
-  }
-
-  tags = {
-    Name        = "${var.environment}-vm01-int-int"
-    environment = var.environment
-    owner       = var.owner
-    group       = var.group
-    costcenter  = var.costcenter
-    application = var.application
-  }
-}
-
-resource "azurerm_network_interface" "vm02-int-nic" {
-  name                      = "${var.prefix}-vm02-int-nic"
-  location                  = azurerm_resource_group.main.location
-  resource_group_name       = azurerm_resource_group.main.name
-  network_security_group_id = azurerm_network_security_group.main.id
-
-  #depends_on          = ["azurerm_lb_backend_address_pool.backend_pool"]
-
-  ip_configuration {
-    name                          = "primary"
-    subnet_id                     = azurerm_subnet.Internal.id
-    private_ip_address_allocation = "Static"
-    private_ip_address            = var.f5vm02int
-    primary                       = true
-  }
-
-  tags = {
-    Name        = "${var.environment}-vm02-int-int"
-    environment = var.environment
-    owner       = var.owner
-    group       = var.group
-    costcenter  = var.costcenter
-    application = var.application
-  }
-}
-
 # Associate the Network Interface to the BackendPool
 resource "azurerm_network_interface_backend_address_pool_association" "bpool_assc_vm01" {
   depends_on = [
@@ -459,9 +380,6 @@ data "template_file" "vm_onboard" {
     AS3_URL        = var.AS3_URL
     libs_dir       = var.libs_dir
     onboard_log    = var.onboard_log
-    DO1_Document   = base64encode(data.template_file.vm01_do_json.rendered)
-    DO2_Document   = base64encode(data.template_file.vm02_do_json.rendered)
-    AS3_Document   = base64encode(data.template_file.as3_json.rendered)
   }
 }
 
@@ -508,7 +426,15 @@ data "template_file" "vm02_do_json" {
 }
 
 data "template_file" "as3_json" {
-  template = file("${path.module}/scca.json")
+  template = file("${path.module}/as3.json")
+
+  vars = {
+    rg_name         = azurerm_resource_group.main.name
+    subscription_id = var.SP["subscription_id"]
+    tenant_id       = var.SP["tenant_id"]
+    client_id       = var.SP["client_id"]
+    client_secret   = var.SP["client_secret"]
+  }
 }
 
 # Create F5 BIGIP VMs
@@ -517,7 +443,7 @@ resource "azurerm_virtual_machine" "f5vm01" {
   location                     = azurerm_resource_group.main.location
   resource_group_name          = azurerm_resource_group.main.name
   primary_network_interface_id = azurerm_network_interface.vm01-mgmt-nic.id
-  network_interface_ids        = [azurerm_network_interface.vm01-mgmt-nic.id, azurerm_network_interface.vm01-ext-nic.id, azurerm_network_interface.vm01-int-nic.id]
+  network_interface_ids        = [azurerm_network_interface.vm01-mgmt-nic.id, azurerm_network_interface.vm01-ext-nic.id]
   vm_size                      = var.instance_type
   availability_set_id          = azurerm_availability_set.avset.id
 
@@ -573,7 +499,7 @@ resource "azurerm_virtual_machine" "f5vm02" {
   location                     = azurerm_resource_group.main.location
   resource_group_name          = azurerm_resource_group.main.name
   primary_network_interface_id = azurerm_network_interface.vm02-mgmt-nic.id
-  network_interface_ids        = [azurerm_network_interface.vm02-mgmt-nic.id, azurerm_network_interface.vm02-ext-nic.id, azurerm_network_interface.vm02-int-nic.id]
+  network_interface_ids        = [azurerm_network_interface.vm02-mgmt-nic.id, azurerm_network_interface.vm02-ext-nic.id]
   vm_size                      = var.instance_type
   availability_set_id          = azurerm_availability_set.avset.id
 
@@ -649,7 +575,7 @@ resource "azurerm_virtual_machine" "backendvm" {
 
   os_profile {
     computer_name  = "backend01"
-    admin_username = var.uname
+    admin_username = "azureuser"
     admin_password = var.upassword
     custom_data    = <<-EOF
               #!/bin/bash
@@ -684,13 +610,17 @@ resource "azurerm_virtual_machine_extension" "f5vm01-run-startup-cmd" {
   location             = var.region
   resource_group_name  = azurerm_resource_group.main.name
   virtual_machine_name = azurerm_virtual_machine.f5vm01.name
-  publisher            = "Microsoft.Azure.Extensions"
-  type                 = "CustomScript"
-  type_handler_version = "2.0"
+  publisher            = "Microsoft.OSTCExtensions"
+  type                 = "CustomScriptForLinux"
+  type_handler_version = "1.2"
+
+  # publisher            = "Microsoft.Azure.Extensions"
+  # type                 = "CustomScript"
+  # type_handler_version = "2.0"
 
   settings = <<SETTINGS
     {
-        "commandToExecute": "bash /var/lib/waagent/CustomData; curl -X GET http://localhost:8100${var.rest_do_uri} -u ${var.uname}:${var.upassword}; curl -X ${var.rest_do_method} http://localhost:8100${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d /var/lib/waagent/do1.json; curl -X ${var.rest_as3_method} http://localhost:8100${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d /var/lib/waagent/as3.json"
+        "commandToExecute": "bash /var/lib/waagent/CustomData"
     }
   
 SETTINGS
@@ -715,13 +645,17 @@ resource "azurerm_virtual_machine_extension" "f5vm02-run-startup-cmd" {
   location             = var.region
   resource_group_name  = azurerm_resource_group.main.name
   virtual_machine_name = azurerm_virtual_machine.f5vm02.name
-  publisher            = "Microsoft.Azure.Extensions"
-  type                 = "CustomScript"
-  type_handler_version = "2.0"
+  publisher            = "Microsoft.OSTCExtensions"
+  type                 = "CustomScriptForLinux"
+  type_handler_version = "1.2"
+
+  # publisher            = "Microsoft.Azure.Extensions"
+  # type                 = "CustomScript"
+  # type_handler_version = "2.0"
 
   settings = <<SETTINGS
     {
-        "commandToExecute": "bash /var/lib/waagent/CustomData; curl -X GET http://localhost:8100${var.rest_do_uri} -u ${var.uname}:${var.upassword}; curl -X ${var.rest_do_method} http://localhost:8100${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d /var/lib/waagent/do2.json"
+        "commandToExecute": "bash /var/lib/waagent/CustomData"
     }
   
 SETTINGS
@@ -753,7 +687,81 @@ resource "local_file" "vm_as3_file" {
   filename = "${path.module}/vm_as3_data.json"
 }
 
+resource "null_resource" "f5vm01-run-REST" {
+  depends_on = [azurerm_virtual_machine_extension.f5vm01-run-startup-cmd]
+
+  # Running DO REST API
+  # Running DO REST API
+  provisioner "local-exec" {
+    command = <<-EOF
+      #!/bin/bash
+      curl -k -X GET https://${data.azurerm_public_ip.vm01mgmtpip.ip_address}${var.rest_do_uri} \
+              -u ${var.uname}:${var.upassword}
+#      sleep 10
+      curl -k -X ${var.rest_do_method} https://${data.azurerm_public_ip.vm01mgmtpip.ip_address}${var.rest_do_uri} \
+              -u ${var.uname}:${var.upassword} \
+              -d @${var.rest_vm01_do_file}
+EOF
+
+  }
+
+  # Running AS3 REST API
+  # Running AS3 REST API
+  provisioner "local-exec" {
+    command = <<-EOF
+      #!/bin/bash
+#      sleep 15
+      curl -k -X ${var.rest_as3_method} https://${data.azurerm_public_ip.vm01mgmtpip.ip_address}${var.rest_as3_uri} \
+              -u ${var.uname}:${var.upassword} \
+              -d @${var.rest_vm_as3_file}
+EOF
+
+  }
+}
+
+resource "null_resource" "f5vm02-run-REST" {
+  depends_on = [azurerm_virtual_machine_extension.f5vm02-run-startup-cmd]
+
+  # Running DO REST API
+  # Running DO REST API
+  provisioner "local-exec" {
+    command = <<-EOF
+      #!/bin/bash
+#      sleep 5
+      curl -k -X ${var.rest_do_method} https://${data.azurerm_public_ip.vm02mgmtpip.ip_address}${var.rest_do_uri} \
+              -u ${var.uname}:${var.upassword} \
+              -d @${var.rest_vm02_do_file}
+EOF
+
+  }
+
+  # Running AS3 REST API
+  # Running AS3 REST API
+  provisioner "local-exec" {
+    command = <<-EOF
+      #!/bin/bash
+#      sleep 10
+      curl -k -X ${var.rest_as3_method} https://${data.azurerm_public_ip.vm02mgmtpip.ip_address}${var.rest_as3_uri} \
+              -u ${var.uname}:${var.upassword} \
+              -d @${var.rest_vm_as3_file}
+EOF
+
+  }
+}
+
 ## OUTPUTS ###
+data "azurerm_public_ip" "vm01mgmtpip" {
+  name                = azurerm_public_ip.vm01mgmtpip.name
+  resource_group_name = azurerm_resource_group.main.name
+  depends_on          = [azurerm_virtual_machine_extension.f5vm01-run-startup-cmd]
+}
+
+data "azurerm_public_ip" "vm02mgmtpip" {
+  name                = azurerm_public_ip.vm02mgmtpip.name
+  resource_group_name = azurerm_resource_group.main.name
+  depends_on          = [azurerm_virtual_machine_extension.f5vm02-run-startup-cmd]
+}
+
 data "azurerm_public_ip" "lbpip" {
   name                = azurerm_public_ip.lbpip.name
   resource_group_name = azurerm_resource_group.main.name
@@ -788,7 +796,10 @@ output "f5vm01_mgmt_private_ip" {
   value = azurerm_network_interface.vm01-mgmt-nic.private_ip_address
 }
 
-#output "f5vm01_mgmt_public_ip" { value = "${data.azurerm_public_ip.vm01mgmtpip.ip_address}" }
+output "f5vm01_mgmt_public_ip" {
+  value = data.azurerm_public_ip.vm01mgmtpip.ip_address
+}
+
 output "f5vm01_ext_private_ip" {
   value = azurerm_network_interface.vm01-ext-nic.private_ip_address
 }
@@ -801,7 +812,10 @@ output "f5vm02_mgmt_private_ip" {
   value = azurerm_network_interface.vm02-mgmt-nic.private_ip_address
 }
 
-#output "f5vm02_mgmt_public_ip" { value = "${data.azurerm_public_ip.vm02mgmtpip.ip_address}" }
+output "f5vm02_mgmt_public_ip" {
+  value = data.azurerm_public_ip.vm02mgmtpip.ip_address
+}
+
 output "f5vm02_ext_private_ip" {
   value = azurerm_network_interface.vm02-ext-nic.private_ip_address
 }

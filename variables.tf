@@ -28,24 +28,34 @@ variable "rest_vm_as3_file" {
 }
 
 # Azure Environment
+variable "SP" {
+  type = map(string)
+  default = {
+    subscription_id = "xxxxx"
+    client_id       = "xxxxx"
+    client_secret   = "xxxxx"
+    tenant_id       = "xxxxx"
+  }
+}
+
 variable "prefix" {
-  default = "scca"
+  default = "scs"
 }
 
 variable "uname" {
-  default = "xadmin"
+  default = "azureuser"
 }
 
 variable "upassword" {
-  default = "2018F5Networks!!"
+  default = "Default12345"
 }
 
 variable "location" {
-  default = "West US"
+  default = "eastus"
 }
 
 variable "region" {
-  default = "West US"
+  default = "East US"
 }
 
 # NETWORK
@@ -74,10 +84,6 @@ variable "f5vm01ext_sec" {
   default = "10.90.2.11"
 }
 
-variable "f5vm01int" {
-  default = "10.90.3.4"
-}
-
 variable "f5vm02mgmt" {
   default = "10.90.1.5"
 }
@@ -88,10 +94,6 @@ variable "f5vm02ext" {
 
 variable "f5vm02ext_sec" {
   default = "10.90.2.12"
-}
-
-variable "f5vm02int" {
-  default = "10.90.3.5"
 }
 
 variable "backend01ext" {
@@ -146,12 +148,12 @@ variable "timezone" {
 
 ## Please check and update the latest DO URL from https://github.com/F5Networks/f5-declarative-onboarding/releases
 variable "DO_onboard_URL" {
-  default = "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.9.0/f5-declarative-onboarding-1.9.0-1.noarch.rpm"
+  default = "https://github.com/garyluf5/f5tools/raw/master/f5-declarative-onboarding-1.3.0-4.noarch.rpm"
 }
 
 ## Please check and update the latest AS3 URL from https://github.com/F5Networks/f5-appsvcs-extension/releases/latest 
 variable "AS3_URL" {
-  default = "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.16.0/f5-appsvcs-3.16.0-6.noarch.rpm"
+  default = "https://github.com/garyluf5/f5tools/raw/master/f5-appsvcs-3.9.0-3.noarch.rpm"
 }
 
 variable "libs_dir" {
