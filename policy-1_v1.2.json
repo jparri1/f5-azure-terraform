@@ -1,0 +1,111 @@
+{
+	"policy": {
+		"name": "policy-1",
+		"description": "Policy Example - Rapid Deployment",
+		"template": {
+			"name": "POLICY_TEMPLATE_RAPID_DEPLOYMENT"
+		},
+		"enforcementMode": "blocking",
+		"server-technologies": [
+			{
+				"serverTechnologyName": "MySQL"
+			},
+			{
+				"serverTechnologyName": "Unix/Linux"
+			},
+			{
+				"serverTechnologyName": "AngularJS"
+			}
+		],
+		"signature-settings": {
+			"signatureStaging": false
+		},
+		"policy-builder": {
+			"learnOnlyFromNonBotTraffic": false
+		},
+		"whitelist-ips": [ {
+			"ipAddress": "10.216.8.16", 
+			"ipMask": "255.255.255.0",
+			"trustedByPolicyBuilder": true
+			},
+			{
+			"ipAddress": "10.216.8.19", 
+			"ipMask": "255.255.255.0",
+			"trustedByPolicyBuilder": true
+			}]
+	},
+		"modifications": [
+            {
+                "entityChanges": {
+                    "signatureOverrides": [
+                        {
+                            "enabled": false,
+                            "signatureId": 200000097
+                        }
+                    ],
+                    "type": "explicit"
+                },
+                "entity": {
+                    "name": "referer"
+                },
+                "entityKind": "tm:asm:policies:headers:headerstate",
+                "action": "update-append",
+                "description": "Disable the matched signature on the matched Header"
+            },
+            {
+                "entityChanges": {
+                    "signatureOverrides": [
+                        {
+                            "enabled": false,
+                            "signatureId": 200000091
+                        }
+                    ],
+                    "type": "explicit"
+                },
+                "entity": {
+                    "name": "referer"
+                },
+                "entityKind": "tm:asm:policies:headers:headerstate",
+                "action": "update-append",
+                "description": "Disable the matched signature on the matched Header"
+            },
+            {
+                "entityChanges": {
+                    "signatureOverrides": [
+                        {
+                            "enabled": false,
+                            "signatureId": 200000099
+                        }
+                    ],
+                    "type": "wildcard"
+                },
+                "entity": {
+                    "protocol": "http",
+                    "name": "*",
+                    "method": "*"
+                },
+                "entityKind": "tm:asm:policies:urls:urlstate",
+                "action": "update-append",
+                "description": "Disable the matched signature on the matched URL"
+            },
+            {
+                "entityChanges": {
+                    "signatureOverrides": [
+                        {
+                            "enabled": false,
+                            "signatureId": 200000093
+                        }
+                    ],
+                    "type": "wildcard"
+                },
+                "entity": {
+                    "protocol": "http",
+                    "name": "*",
+                    "method": "*"
+                },
+                "entityKind": "tm:asm:policies:urls:urlstate",
+                "action": "update-append",
+                "description": "Disable the matched signature on the matched URL"
+            }
+        ]
+}
