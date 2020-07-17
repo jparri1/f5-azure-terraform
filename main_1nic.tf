@@ -178,8 +178,8 @@ resource "azurerm_network_interface" "backendvm01-ext-nic" {
   }
 }
 
-resource "azurerm_network_interface" "advwaf-nic" {
-  name                      = "${var.prefix}-advwaf-nic"
+resource "azurerm_network_interface" "advwaf01-nic" {
+  name                      = "${var.prefix}-advwaf01-nic"
   location                  = azurerm_resource_group.main.location
   resource_group_name       = azurerm_resource_group.main.name
 
@@ -187,12 +187,12 @@ resource "azurerm_network_interface" "advwaf-nic" {
     name                          = "primary"
     subnet_id                     = data.azurerm_subnet.cyber.id
     private_ip_address_allocation = "static"
-    private_ip_address            = var.advwaf
+    private_ip_address            = var.advwaf01
     primary                       = true
   }
 
   tags = {
-    Name        = "${var.environment}-advwaf"
+    Name        = "${var.environment}-advwaf01"
   }
 }
 
@@ -403,11 +403,11 @@ resource "azurerm_virtual_machine" "f5vm02" {
   }
 }
 
-resource "azurerm_virtual_machine" "f5vmadvwaf" {
-  name                         = "${var.prefix}-f5vmadvwaf"
+resource "azurerm_virtual_machine" "f5vmadvwaf01" {
+  name                         = "${var.prefix}-f5vmadvwaf01"
   location                     = azurerm_resource_group.main.location
   resource_group_name          = azurerm_resource_group.main.name
-  network_interface_ids        = [azurerm_network_interface.advwaf-nic.id]
+  network_interface_ids        = [azurerm_network_interface.advwaf01-nic.id]
   vm_size                      = var.instance_type
 
   # Uncomment this line to delete the OS disk automatically when deleting the VM
@@ -418,7 +418,7 @@ resource "azurerm_virtual_machine" "f5vmadvwaf" {
 
   
   storage_os_disk {
-    name              = "${var.prefix}advwaf-osdisk"
+    name              = "${var.prefix}advwaf01-osdisk"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
@@ -428,12 +428,12 @@ resource "azurerm_virtual_machine" "f5vmadvwaf" {
       publisher = "f5-networks"
       offer = "f5-big-ip-advanced-waf"
       sku = "f5-bigip-virtual-edition-25m-waf-hourly"
-      version = "15.1.002000"
+      version = "latest"
   }
 
 
   os_profile {
-    computer_name  = "${var.prefix}advwaf"
+    computer_name  = "${var.prefix}advwaf01"
     admin_username = var.uname
     admin_password = var.upassword
   }
@@ -449,8 +449,20 @@ resource "azurerm_virtual_machine" "f5vmadvwaf" {
   }
 
   tags = {
-    Name        = "${var.environment}-f5vmadvwaf"
+    Name        = "${var.environment}-f5vmadvwaf01"
   }
+}
+
+
+provider "bigip" {
+  address = "10.216.8.30"
+  username = var.uname
+  password = var.upassword
+}
+
+resource "bigip_as3"  "as3-asm" {
+    as3_json = "${file("policy-1_v1.2")}"
+
 }
 
 # Docker VM for pool members
@@ -669,29 +681,27 @@ resource "azurerm_virtual_machine" "nginxplus" {
         managed_disk_type = "Premium_LRS"
     }
 
- #   storage_image_reference {
- #       publisher = "nginxinc"
- #       offer = "nginx-plus-v1"
- #       sku = "nginx-plus-ub1804"
- #       version = "latest"
- # }
-
-  storage_image_reference {
-        publisher = "Canonical"
-        offer     = "UbuntuServer"
-        sku       = "18.04-LTS"
-        version   = "latest"
-    }
+    storage_image_reference {
+        publisher = "nginxinc"
+        offer = "nginx-plus-v1"
+        sku = "nginx-plus-ub1804"
+        version = "latest"
+  }
 
   os_profile {
     computer_name  = "nginxplus"
     admin_username = "azureuser"
     admin_password = var.upassword
-	  #custom_data    = data.template_file.vm_onboard_backend.rendered
   }
 
   os_profile_linux_config {
     disable_password_authentication = false
+  }
+
+  plan {
+    name = "nginx-plus-ub1804"
+    publisher = "nginxinc"
+    product = "nginx-plus-v1"
   }
 
     tags = {
@@ -1005,6 +1015,13 @@ resource "null_resource" "f5vm02_as3_installer" {
   }
 }
 
+resource "null_resource" "bigiq_as3_installer" {
+
+  provisioner "local-exec" {
+        #curl command to install AS3
+        command = "curl https://10.216.8.9/mgmt/shared/iapp/package-management-tasks -u admin:${var.bigiqpass} -d ${var.as3_data} -k"
+  }
+}
 
 
 # Run REST API for configuration
@@ -1128,6 +1145,63 @@ provisioner "remote-exec" {
   }
 }
 
+resource "null_resource" "filecopy_backendvm02" {
+   depends_on = [azurerm_virtual_machine.backendvm02]
+
+  provisioner "file" {
+    source      = "conf"
+    destination = "/var/tmp"
+    
+    connection {
+    type     = "ssh"
+    user     = "${var.uname}"
+    password = "${var.upassword}"
+    host     = "${azurerm_network_interface.backendvm02_nic.private_ip_address}"
+    }  
+  }
+  
+}
+
+resource "null_resource" "backendvm02-remote" {
+  depends_on = [null_resource.filecopy_backendvm02]
+
+provisioner "remote-exec" {
+    inline = [
+					"sudo mkdir -p /etc/nginx/api_conf.d",
+					"sudo mkdir -p /etc/node-rest",
+					"sudo mkdir -p /etc/nginx/ssl/keys",
+			    "sudo mkdir -p /etc/nginx/ssl/certs",
+					"sudo cp /var/tmp/conf/warehouse_api_simple.conf /etc/nginx/api_conf.d/",
+					"sudo cp /var/tmp/conf/api_backends.conf /etc/nginx/",
+					"sudo cp /var/tmp/conf/api_gateway.conf /etc/nginx/",
+					"sudo cp /var/tmp/conf/api_json_errors.conf /etc/nginx/",
+					"sudo cp /var/tmp/conf/nginx.conf /etc/nginx/",
+					"sudo cp /var/tmp/conf/jwk.json /etc/nginx/",
+					"sudo cp /var/tmp/conf/server.crt /etc/nginx/ssl/certs/",
+					"sudo cp /var/tmp/conf/server.key /etc/nginx/ssl/keys/",
+					"cd /etc/node-rest",
+					"sudo cp /var/tmp/conf/index.js /etc/node-rest/",
+					"sudo curl --silent --location https://rpm.nodesource.com/setup_12.x | sudo bash -",
+					"sudo yum install -y nodejs",
+					"sudo npm install express --save",
+					"sudo npm install nodemon -g",
+          "sudo cd ",
+          "sudo npm install pm2@latest -g",
+          "sudo pm2 start index.js",
+          "sudo pm2 startup systemd",
+          "sudo pm2 save",
+          "exit"
+        
+    ]
+    
+    connection {
+    type     = "ssh"
+    user     = "${var.uname}"
+    password = "${var.upassword}"
+    host     = "${azurerm_network_interface.backendvm02_nic.private_ip_address}"
+    }  
+  }
+}
 
 
 output "sg_id" {
