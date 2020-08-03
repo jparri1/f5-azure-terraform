@@ -428,7 +428,7 @@ resource "azurerm_virtual_machine" "f5vmadvwaf01" {
       publisher = "f5-networks"
       offer = "f5-big-ip-advanced-waf"
       sku = "f5-bigip-virtual-edition-25m-waf-hourly"
-      version = "latest"
+      version = "15.0.104000"
   }
 
 

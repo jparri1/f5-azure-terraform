@@ -181,7 +181,7 @@ variable "product" {
 }
 
 variable "bigip_version" {
-  default = "latest"
+  default = "15.0.104000"
 }
 
 # BIGIP Setup
