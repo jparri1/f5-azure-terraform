@@ -35,6 +35,10 @@ variable "rest_vm01_do_file" {
   default = "vm01_do_data.json"
 }
 
+variable "rest_f5vmadvwaf01_do_file" {
+  default = "f5vmadvwaf01_do_data.json"
+}
+
 variable "rest_vm02_do_file" {
   default = "vm02_do_data.json"
 }
@@ -43,6 +47,9 @@ variable "rest_vm_as3_file" {
   default = "vm_as3_data.json"
 }
 
+variable "rest_f5vmadvwaf01_as3_file" {
+  default = "f5vmadvwaf01_as3_data.json"
+}
 # Azure Environment
 variable "SP" {
   type = map(string)
@@ -214,13 +221,13 @@ variable "timezone" {
 }
 
 ## Please check and update the latest DO URL from https://github.com/F5Networks/f5-declarative-onboarding/releases
-variable "DO_onboard_URL" {
-  default = "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.12.0/f5-declarative-onboarding-1.12.0-1.noarch.rpm"
+variable "DO_URL" {
+  default = "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.14.0/f5-declarative-onboarding-1.14.0-1.noarch.rpm"
 }
 
 ## Please check and update the latest AS3 URL from https://github.com/F5Networks/f5-appsvcs-extension/releases/latest 
 variable "AS3_URL" {
-  default = "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.18.0/f5-appsvcs-3.18.0-4.noarch.rpm"
+  default = "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.21.0/f5-appsvcs-3.21.0-4.noarch.rpm"
 }
 
 variable "ts_url" {
