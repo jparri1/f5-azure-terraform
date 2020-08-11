@@ -1,8 +1,8 @@
 # Configure the Microsoft Azure Provider, replace Service Principal and Subscription with your own
 provider "azurerm" {
-    version = "~>2.1"
+    version = "=2.21.0"
 	features {}
-    
+#~>2.1
   
 	subscription_id = "77a036ca-421e-4694-be23-7589157c28de"
     #client_id       = "6ba5c3dd-879b-4d60-af68-cc279fcb7892"

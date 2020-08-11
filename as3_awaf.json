@@ -1,40 +1,41 @@
 {
-    "class": "AS3",
-    "action": "deploy",
-    "declaration": {
-    "schemaVersion": "3.16.0",
-    "class": "ADC",
-    "id": "autogen_5efe91cc-7832-4538-9710-b0db00fc3fcf",
-    "staging": {
-      "juiceshop_staging": {
-        "web_pool": {
-          "monitors": [
-            "http"
-          ],
-          "members": [
-            {
-              "serverAddresses": [
-                "10.216.8.19"
-              ],
-              "servicePort": 3000
-            }
-          ],
-          "class": "Pool"
-        },
-        "juiceshop_staging": {
-          "class": "Service_HTTP",
-          "virtualAddresses": [
-            "0.0.0.0/0"
-          ],
-          "virtualPort": 443,
-          "snat": "auto",
-          "policyWAF": {
-            "bigip": "/Common/juiceshop_waf_policy_staging"
-          },
-          "pool": "web_pool"
-        },
-        "serverssl": {
-                  "class": "TLS_Client"
+      "class": "ADC",
+      "id": "myid3",
+      "schemaVersion": "3.7.0",
+      "staging": {
+          "class": "Tenant",
+          "A1": {
+              "class": "Application",
+              "template": "generic",
+              "juiceshop_staging": {
+                  "class": "Service_HTTPS",
+                  "virtualPort": 443,
+                  "virtualAddresses": [
+                      
+                          "0.0.0.0"
+                      
+                  ],
+                  "pool": "web_pool",
+                  "policyWAF": {
+                    "use": "juiceshop_waf_policy_staging"
+                    },
+                  "serverTLS": "webtls"
+              },
+              "web_pool": {
+                  "class": "Pool",
+                  "members": [
+                      {
+                          "servicePort": 3000,
+                          "serverAddresses": [
+                              "10.216.8.19"
+                          ]
+                      }
+                  ]
+              },
+              "juiceshop_waf_policy_staging": {
+                    "class": "WAF_Policy",
+                    "ignoreChanges": false,
+                    "url": "https://raw.githubusercontent.com/f5devcentral/f5-asm-policy-templates/master/owasp_ready_template/owasp-auto-tune-v1.1.xml"
               },
               "webtls": {
                   "class": "TLS_Server",
@@ -49,11 +50,7 @@
                   "remark": "in practice we recommend using a passphrase",
                   "certificate": "-----BEGIN CERTIFICATE-----\nMIIDkzCCAnugAwIBAgIJANwXwS5GFrJBMA0GCSqGSIb3DQEBCwUAMEsxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIEwVUZXhhczEPMA0GA1UEBxMGRGFsbGFzMQwwCgYDVQQKEwNBRFMxDTALBgNVBAMTBHRlc3QwHhcNMjAwNjIzMTYzNTU4WhcNMjEwNjIzMTYzNTU4WjBLMQswCQYDVQQGEwJVUzEOMAwGA1UECBMFVGV4YXMxDzANBgNVBAcTBkRhbGxhczEMMAoGA1UEChMDQURTMQ0wCwYDVQQDEwR0ZXN0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy6Bp+NLEDId/BzANDoPpUnft0A61ZjnJ4aOVhSrGWCOTlFXEopT7Ai3rCTOBLBaXAAcziJ7deZh6mS2AqfvZv6w7ksWCIB1jw55Aux+rV8sUBmm+0BL9BFIU4vJegMDxfVlokMV5s2KJAgoj1vmFUZYxyxByMIAh7xti7XbAvlMaK6CH/e7DIBOAwAQHuRAvGYq1UL80eRUNmACtc6hRKiYR6lxjTpxe2KiCRJigzq5igmiCO7qtwsgyjOf/GGx9nzAsQY7wtfK+UlQZKngjk31dwY1/OIlLQNqJNXqP/o34cOYAkx/oTGfthjQmRVtBK1g1p+ePFwCKjhQnMxeunwIDAQABo3oweDAdBgNVHQ4EFgQUyjgnL+zc9MK5KlCf1ujTnAlitpMwDAYDVR0TAQH/BAIwADARBglghkgBhvhCAQEEBAMCBkAwCwYDVR0PBAQDAgXgMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBQGA1UdEQQNMAuCCWxvY2FsaG9zdDANBgkqhkiG9w0BAQsFAAOCAQEAN7zjnR0733ZwpPWMUVj9VSWyHK0DgR5+IjGVPiKvdBLZqXyEulu+vXhRzce4zuhIfRoTVsL2bXoVG4aIs5FmiSfTK0J6DD8Y75ug9xs7z5RoFx244re8lBSjHahgozUgMLeiS92e7IqFv3q/A/YZdUBeJFOq9XAu0FaXdZkyMzqksp+Tg6yXmb7UnHiyCuW5wMTs1GU0TgjofxqQtRAFoeU7PzahUrwEToofaHJX/jKKNGf+Yf4t/+8Z2fIYAf9TSwgUoAZ3Yqd7m8hzKEnQZKVOdpa40PYiM6XqSs/tnJEkHqBOcP7EneLuGdiW7CiPn5HpmQ6aeJHja961mmOw7Q==\n-----END CERTIFICATE-----",
                   "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAy6Bp+NLEDId/BzANDoPpUnft0A61ZjnJ4aOVhSrGWCOTlFXEopT7Ai3rCTOBLBaXAAcziJ7deZh6mS2AqfvZv6w7ksWCIB1jw55Aux+rV8sUBmm+0BL9BFIU4vJegMDxfVlokMV5s2KJAgoj1vmFUZYxyxByMIAh7xti7XbAvlMaK6CH/e7DIBOAwAQHuRAvGYq1UL80eRUNmACtc6hRKiYR6lxjTpxe2KiCRJigzq5igmiCO7qtwsgyjOf/GGx9nzAsQY7wtfK+UlQZKngjk31dwY1/OIlLQNqJNXqP/o34cOYAkx/oTGfthjQmRVtBK1g1p+ePFwCKjhQnMxeunwIDAQABAoIBAHvss7HQK6poaAGq17dmxn//JwdBfFqrftbI5L13y+BmPnG/RP2hZ6Xq5ijiZJG9acaFm3JhJO7UwoAoti49bUb+ff8UHt6GpGmwDTsUygWTPSut/YfKlpujjLyVvrfjNNURrda1qBxpMnLAUxGJJ/8ARmuMJcKoqH5Jj4pvhFwPRcoFOWFGorCv56t/de0q14/CFd0UF+tR3tgqY32eu456stnQF6Ds1qsrzXjV/NkEBlHPqvYSfTXAYGDWoETwZEenwtMVj/bu43bhQ3GfE7IexvikR6CHhMHZT1G71nbco8v//+dbIMJjpGTKCm4TRpg8PmT0KnENvw4n5hyiEPkCgYEA/nyzzn9IF8Uy1fqHi6f6HIc7U67b1ZEljPWuKLaORNBUv5gvR5tCiY+C2RiyGSgXwlSBEsaIbfxol8qnsDVlm4yVi+hH80pRKhQU4w1yTf7kYu0iOsCBvsNFbG5T636EplTvelh2nHRE2TSK2YMPFFowcwmBQGt4RQHc/MlMJf0CgYEAzNZO6Vj2OEoQWPPsRajveumXKU80t9z0dn/FMv/nUM8HoeTJcIvHNMksR9GXBSaWA4gW/bzAss4L0TSE1lg64k2t30oBXLs1RYQRj68B1WSffnNGLGnqFG/83ZnPW1TqpImNjrzcA57bLmabvh72cIJYGzywHE2T6f7bFBLZe8sCgYEA+/6BkcWpnpgPeaFFnP2thZhHH9szJew/MbCJTxlOEUf1026fypksLsjjuZNhr9VqiWxiDzR2HerlqwDqQWrufTOdVdehf4CklDUkZZyIBkGS536G+YRsNXhpAzDQeo1iTs4mAJEeilf7YNVNdIr5YJ7aAN91lFOW2UY6DDpL5AUCgYEAmkz1tKHnGA/ysI9OdEsF2zkLPXsE41v2ay1khz5uKVlLDpEhjT4+GW1RhehEMwUWDCL/7rO5FPhRvo4pYq2j7cVGLOW6kPgU8QDDmdDjOLRL0R1UxzAhvLN/cA7lPI+DEd7sW5G4yqFnylRRDa6VRbtqU1or76YgvivVLBHm8nECgYEA+AujAtQ0ZiRbA6y3/pBGPAdqiWXhN6e4BSyho4kyr1cPwHvUpC5Dho0Hmdlb+wvOrt0ym7MOFSFGt5W1QhNtDK4NkkhB8LO9a0Guqpwga1dvSvy7D58a4zHYqygtY1Dr9cv4LqHqUuuiiSk2bo1yqoARNEu8gGb1E+n1Ay3x/BA=\n-----END RSA PRIVATE KEY-----"
-              },
-        "template": "https",
-        "class": "Application"
-      },
-      "class": "Tenant"
-    }
+              }
+          }
+      }
   }
-}

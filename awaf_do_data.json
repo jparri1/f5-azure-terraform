@@ -32,6 +32,7 @@
         "myProvisioning": {
             "class": "Provision",
             "ltm": "nominal"
+			"asm": "nominal"
         },
         "internal": {
             "class": "VLAN",
@@ -43,13 +44,6 @@
                     "tagged": false
                 }
             ]
-        },
-        "selfip-1nic": {
-            "class": "SelfIp",
-            "address": "10.216.8.30/24",
-            "vlan": "external",
-            "allowService": "default",
-            "trafficGroup": "traffic-group-local-only"
         },
         "default": {
             "class": "Route",
