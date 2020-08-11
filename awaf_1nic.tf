@@ -1,7 +1,7 @@
 # Create a Resource Group for the new Virtual Machine
-resource "azurerm_resource_group" "main" {
+data "azurerm_resource_group" "main" {
   name     = "${var.prefix}_rg"
-  location = "${var.location}"
+  #location = "${var.location}"
 }
 
 data "azurerm_subnet" "cyber" {
@@ -35,7 +35,7 @@ data "template_file" "vm_onboard_awaf" {
 data "template_file" "awaf_do_json" {
   template = file("${path.module}/awaf_do_data.json")
   depends_on = [azurerm_network_interface.advwaf01-nic]
-
+/*
   vars = {
     host1          = var.host1_name
     host2          = var.host2_name
@@ -52,7 +52,7 @@ data "template_file" "awaf_do_json" {
     #local_sku      = var.license2
   }
   #Uncomment the following line for BYOL
-  
+ */ 
 }
 
 data "template_file" "awaf_as3_json" {
@@ -62,8 +62,8 @@ data "template_file" "awaf_as3_json" {
 
 resource "azurerm_network_interface" "advwaf01-nic" {
   name                      = "${var.prefix}-advwaf01-nic"
-  location                  = azurerm_resource_group.main.location
-  resource_group_name       = azurerm_resource_group.main.name
+  location                  = data.azurerm_resource_group.main.location
+  resource_group_name       = data.azurerm_resource_group.main.name
 
   ip_configuration {
     name                          = "primary"
@@ -80,8 +80,8 @@ resource "azurerm_network_interface" "advwaf01-nic" {
 
 resource "azurerm_virtual_machine" "f5vmadvwaf01" {
   name                         = "${var.prefix}-f5vmadvwaf01"
-  location                     = azurerm_resource_group.main.location
-  resource_group_name          = azurerm_resource_group.main.name
+  location                     = data.azurerm_resource_group.main.location
+  resource_group_name          = data.azurerm_resource_group.main.name
   network_interface_ids        = [azurerm_network_interface.advwaf01-nic.id]
   vm_size                      = var.instance_type
 
@@ -130,25 +130,24 @@ resource "azurerm_virtual_machine" "f5vmadvwaf01" {
 }
 
 resource "azurerm_virtual_machine_extension" "run_startup_cmd" {
-    count                = length(var.azs)
-    name                 = format("%s-bigip-startup-%s-%s",var.prefix,count.index,random_id.randomId.hex)
-    #location             = azurerm_resource_group.main.location
-    #resource_group_name  = azurerm_resource_group.main.name
-    #virtual_machine_name = azurerm_virtual_machine.f5bigip[count.index].name
-    virtual_machine_id   = azurerm_virtual_machine.f5vmadvwaf01.id
-    publisher            = "Microsoft.OSTCExtensions"
-    type                 = "CustomScriptForLinux"
-    type_handler_version = "1.2"
+    name = "${var.environment}-f5vmadvwaf01-run-startup-cmd"
+    depends_on = [
+    azurerm_virtual_machine.f5vmadvwaf01
+    ]
+    virtual_machine_id = azurerm_virtual_machine.f5vmadvwaf01.id
+    publisher            = "Microsoft.Azure.Extensions"
+    type                 = "CustomScript"
+    type_handler_version = "2.0"
 
     settings = <<SETTINGS
         {
-            "commandToExecute": "bash /var/lib/waagent/CustomData"
+            "commandToExecute": "bash /var/lib/waagent/CustomData; exit 0;"
         }
     SETTINGS
 
     tags = {
-        Name           = format("%s-bigip-startup-%s-%s",var.prefix,count.index,random_id.randomId.hex)
-        environment    = var.environment
+        Name           = "${var.environment}-f5vmadvwaf01"
+        
     }
 }
 
@@ -164,7 +163,7 @@ resource "null_resource" "filecopy_as3_awaf" {
     type     = "ssh"
     user     = "${var.uname}"
     password = "${var.upassword}"
-    host     = var.f5vmadvwaf01
+    host     = var.advwaf01
     }  
   }
   
@@ -181,7 +180,7 @@ resource "null_resource" "filecopy_do_awaf" {
     type     = "ssh"
     user     = "${var.uname}"
     password = "${var.upassword}"
-    host     = var.f5vmadvwaf01
+    host     = var.advwaf01
     }  
   }
   
@@ -211,12 +210,12 @@ resource "null_resource" "f5vmadvwaf01_as3_installer" {
 */
 # Run REST API for configuration
 resource "local_file" "f5vmadvwaf01_do_file" {
-  content  = data.template_file.vm01_do_json.rendered
+  content  = data.template_file.awaf_do_json.rendered
   filename = "${path.module}/f5vmadvwaf01_do_data.json"
 }
 
 resource "local_file" "f5vmadvwaf01_as3_file" {
-  content  = data.template_file.as3_json.rendered
+  content  = data.template_file.awaf_as3_json.rendered
   filename = "${path.module}/f5vmadvwaf01_as3_data.json"
 }
 
@@ -228,16 +227,16 @@ provisioner "local-exec" {
   }
   # Running DO REST API
   provisioner "local-exec" {
-       command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_do_file} -k"
+       command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_do_file} -k"
     
   }
 }
 
  resource "null_resource" "f5vmadvwaf01-run-AS3" {
-  depends_on =  [null_resource.f5vm02-run-DO]
+  depends_on =  [null_resource.f5vmadvwaf01-run-DO]
   
   provisioner "local-exec" {
-    command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_as3_file} -k"
+    command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_as3_file} -k"
 
   }
 
