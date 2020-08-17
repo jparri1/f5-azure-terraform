@@ -167,8 +167,8 @@ variable "atower" {
   default = "10.216.8.18"
 }
 
-variable "advwaf" {
-  default = "10.216.8.17"
+variable "advwaf01" {
+  default = "10.216.8.30"
 }
 
 
@@ -230,7 +230,7 @@ variable "AS3_URL" {
   default = "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.21.0/f5-appsvcs-3.21.0-4.noarch.rpm"
 }
 
-variable "ts_url" {
+variable "TS_URL" {
   default = "https://github.com/F5Networks/f5-telemetry-streaming/releases/download/v1.11.0/f5-telemetry-1.11.0-1.noarch.rpm"
 }
 
