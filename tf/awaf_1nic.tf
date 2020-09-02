@@ -5,8 +5,8 @@ data "azurerm_resource_group" "main" {
 }
 
 data "azurerm_subnet" "cyber" {
-  name                 = "Cyber-Eng-DevTest"
-  virtual_network_name = "Cybersecurity-Engineering-DevTest-vnet"
+  name                 = "cyber-eng-devtest"
+  virtual_network_name = "cybersecurity-engineering-devtest-vnet"
   resource_group_name  = "Networking-DevTest-RG"
 }
 
@@ -60,10 +60,19 @@ data "template_file" "awaf_as3_json" {
 
 }
 
+terraform {
+    backend "azurerm" {
+        storage_account_name = "f5labtfstate"
+        container_name       = "tfstate"
+        key                  = "terraform.tfstate"
+    }
+}
+
 resource "azurerm_network_interface" "advwaf01-nic" {
   name                      = "${var.prefix}-advwaf01-nic"
   location                  = data.azurerm_resource_group.main.location
   resource_group_name       = data.azurerm_resource_group.main.name
+# network_security_group_id = azurerm_network_security_group.main.id
 
   ip_configuration {
     name                          = "primary"
@@ -103,7 +112,7 @@ resource "azurerm_virtual_machine" "f5vmadvwaf01" {
       publisher = "f5-networks"
       offer = "f5-big-ip-advanced-waf"
       sku = "f5-bigip-virtual-edition-25m-waf-hourly"
-      version = "15.0.104000"
+      version = "15.1.004000"
   }
 
 
@@ -135,83 +144,29 @@ resource "azurerm_virtual_machine_extension" "run_startup_cmd" {
     azurerm_virtual_machine.f5vmadvwaf01
     ]
     virtual_machine_id = azurerm_virtual_machine.f5vmadvwaf01.id
+    publisher            = "Microsoft.OSTCExtensions"
+    type                 = "CustomScriptForLinux"
+    type_handler_version = "1.2"
     publisher            = "Microsoft.Azure.Extensions"
     type                 = "CustomScript"
     type_handler_version = "2.0"
-
-    settings = <<SETTINGS
         {
             "commandToExecute": "bash /var/lib/waagent/CustomData; exit 0;"
         }
     SETTINGS
 
     tags = {
-        Name           = "${var.environment}-f5vmadvwaf01"
-        
+        Name           = "${var.environment}-f5vmadvwaf01"    
     }
 }
 
-/*
-resource "null_resource" "filecopy_as3_awaf" {
-   depends_on = [azurerm_virtual_machine.f5vmadvwaf01]
-
-  provisioner "file" {
-    source      = "f5-appsvcs-3.18.0-4.noarch.rpm"
-    destination = "/var/tmp/f5-appsvcs-3.18.0-4.noarch.rpm"
-    
-    connection {
-    type     = "ssh"
-    user     = "${var.uname}"
-    password = "${var.upassword}"
-    host     = var.advwaf01
-    }  
-  }
-  
-}
-
-resource "null_resource" "filecopy_do_awaf" {
-   depends_on = [azurerm_virtual_machine.f5vmadvwaf01]
-
-  provisioner "file" {
-    source      = "f5-declarative-onboarding-1.12.0-1.noarch.rpm"
-    destination = "/var/tmp/f5-declarative-onboarding-1.12.0-1.noarch.rpm"
-    
-    connection {
-    type     = "ssh"
-    user     = "${var.uname}"
-    password = "${var.upassword}"
-    host     = var.advwaf01
-    }  
-  }
-  
-}
 
 
-resource "null_resource" "f5vmadvwaf01_do_installer" {
-  provisioner "local-exec" {
-        
-        command = "powershell.exe sleep 60"
-  }
-  provisioner "local-exec" {
-        #curl command to install DO
-        command = "curl https://${azurerm_network_interface.vm01-mgmt-nic.private_ip_address}/mgmt/shared/iapp/package-management-tasks -u admin:${var.upassword} -d ${var.do_data} -k"
-  }
-}
-
-resource "null_resource" "f5vmadvwaf01_as3_installer" {
-  depends_on =  [null_resource.f5vmadvwaf01_do_installer]
-  
-
-  provisioner "local-exec" {
-        #curl command to install AS3
-        command = "curl https://${azurerm_network_interface.vm01-mgmt-nic.private_ip_address}/mgmt/shared/iapp/package-management-tasks -u admin:${var.upassword} -d ${var.as3_data} -k"
-  }
-}
-*/
 # Run REST API for configuration
 resource "local_file" "f5vmadvwaf01_do_file" {
   content  = data.template_file.awaf_do_json.rendered
   filename = "${path.module}/f5vmadvwaf01_do_data.json"
+  filename = "f5vmadvwaf01_do_data.json"
 }
 
 resource "local_file" "f5vmadvwaf01_as3_file" {
@@ -227,7 +182,7 @@ provisioner "local-exec" {
   }
   # Running DO REST API
   provisioner "local-exec" {
-       command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_do_file} -k"
+       command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_do_file} -k"
     
   }
 }
@@ -236,11 +191,13 @@ provisioner "local-exec" {
   depends_on =  [null_resource.f5vmadvwaf01-run-DO]
   
   provisioner "local-exec" {
-    command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_as3_file} -k"
+    command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_as3_file} -k"
 
   }
 
  }
+  filename = "f5vmadvwaf01_as3_data.json"
+}
 
 output "sg_id" {
   value = data.azurerm_subnet.cyber.id
@@ -249,7 +206,6 @@ output "sg_id" {
 output "sg_name" {
   value = data.azurerm_subnet.cyber.name
 }
-
 
 output "ext_subnet_gw" {
   value = local.ext_gw

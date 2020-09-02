@@ -163,12 +163,18 @@ variable "nginxplus" {
   default = "10.216.8.17"
 }
 
+variable "core-gads-agent" {
+  default = "10.216.8.123"
+}
+
+
 variable "atower" {
   default = "10.216.8.18"
 }
 
 variable "advwaf01" {
   default = "10.216.8.30"
+
 }
 
 
