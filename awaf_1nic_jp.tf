@@ -60,10 +60,98 @@ data "template_file" "awaf_as3_json" {
 
 }
 
+terraform {
+    backend "azurerm" {
+        storage_account_name = "f5labtfstate"
+        container_name       = "tfstate"
+        key                  = "terraform.tfstate"
+    }
+}
+
+resource "azurerm_public_ip" "advwaf01pip" {
+  name                = "${var.prefix}-advwaf01-pip"
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
+  allocation_method   = "Static"
+
+  tags = {
+    Name        = "${var.environment}-advwaf01-public-ip"
+  }
+}
+
+# Create a Network Security Group with some rules
+resource "azurerm_network_security_group" "main" {
+  name                = "${var.prefix}-nsg"
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
+
+  security_rule {
+    name                       = "allow_SSH"
+    description                = "Allow SSH access"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow_HTTP"
+    description                = "Allow HTTP access"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow_HTTPS"
+    description                = "Allow HTTPS access"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow_APP_HTTPS"
+    description                = "Allow HTTPS access"
+    priority                   = 140
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  tags = {
+    Name        = "${var.environment}-bigip-sg"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "main" {
+  subnet_id                 = data.azurerm_subnet.cyber.id
+  network_security_group_id = azurerm_network_security_group.main.id
+}
+
 resource "azurerm_network_interface" "advwaf01-nic" {
   name                      = "${var.prefix}-advwaf01-nic"
   location                  = data.azurerm_resource_group.main.location
   resource_group_name       = data.azurerm_resource_group.main.name
+# network_security_group_id = azurerm_network_security_group.main.id
 
   ip_configuration {
     name                          = "primary"
@@ -71,6 +159,7 @@ resource "azurerm_network_interface" "advwaf01-nic" {
     private_ip_address_allocation = "static"
     private_ip_address            = var.advwaf01
     primary                       = true
+    public_ip_address_id          = azurerm_public_ip.advwaf01pip.id
   }
 
   tags = {
@@ -103,7 +192,7 @@ resource "azurerm_virtual_machine" "f5vmadvwaf01" {
       publisher = "f5-networks"
       offer = "f5-big-ip-advanced-waf"
       sku = "f5-bigip-virtual-edition-25m-waf-hourly"
-      version = "15.0.104000"
+      version = "15.1.004000"
   }
 
 
@@ -151,96 +240,17 @@ resource "azurerm_virtual_machine_extension" "run_startup_cmd" {
     }
 }
 
-/*
-resource "null_resource" "filecopy_as3_awaf" {
-   depends_on = [azurerm_virtual_machine.f5vmadvwaf01]
-
-  provisioner "file" {
-    source      = "f5-appsvcs-3.18.0-4.noarch.rpm"
-    destination = "/var/tmp/f5-appsvcs-3.18.0-4.noarch.rpm"
-    
-    connection {
-    type     = "ssh"
-    user     = "${var.uname}"
-    password = "${var.upassword}"
-    host     = var.advwaf01
-    }  
-  }
-  
-}
-
-resource "null_resource" "filecopy_do_awaf" {
-   depends_on = [azurerm_virtual_machine.f5vmadvwaf01]
-
-  provisioner "file" {
-    source      = "f5-declarative-onboarding-1.12.0-1.noarch.rpm"
-    destination = "/var/tmp/f5-declarative-onboarding-1.12.0-1.noarch.rpm"
-    
-    connection {
-    type     = "ssh"
-    user     = "${var.uname}"
-    password = "${var.upassword}"
-    host     = var.advwaf01
-    }  
-  }
-  
-}
-
-
-resource "null_resource" "f5vmadvwaf01_do_installer" {
-  provisioner "local-exec" {
-        
-        command = "powershell.exe sleep 60"
-  }
-  provisioner "local-exec" {
-        #curl command to install DO
-        command = "curl https://${azurerm_network_interface.vm01-mgmt-nic.private_ip_address}/mgmt/shared/iapp/package-management-tasks -u admin:${var.upassword} -d ${var.do_data} -k"
-  }
-}
-
-resource "null_resource" "f5vmadvwaf01_as3_installer" {
-  depends_on =  [null_resource.f5vmadvwaf01_do_installer]
-  
-
-  provisioner "local-exec" {
-        #curl command to install AS3
-        command = "curl https://${azurerm_network_interface.vm01-mgmt-nic.private_ip_address}/mgmt/shared/iapp/package-management-tasks -u admin:${var.upassword} -d ${var.as3_data} -k"
-  }
-}
-*/
 # Run REST API for configuration
 resource "local_file" "f5vmadvwaf01_do_file" {
   content  = data.template_file.awaf_do_json.rendered
-  filename = "${path.module}/f5vmadvwaf01_do_data.json"
+  filename = "f5vmadvwaf01_do_data.json"
 }
 
 resource "local_file" "f5vmadvwaf01_as3_file" {
   content  = data.template_file.awaf_as3_json.rendered
-  filename = "${path.module}/f5vmadvwaf01_as3_data.json"
+  filename = "f5vmadvwaf01_as3_data.json"
 }
 
-resource "null_resource" "f5vmadvwaf01-run-DO" {
-depends_on =  [azurerm_virtual_machine_extension.run_startup_cmd]
-provisioner "local-exec" {
-        
-        command = "powershell.exe sleep 30"
-  }
-  # Running DO REST API
-  provisioner "local-exec" {
-       command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_do_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_do_file} -k"
-    
-  }
-}
-
- resource "null_resource" "f5vmadvwaf01-run-AS3" {
-  depends_on =  [null_resource.f5vmadvwaf01-run-DO]
-  
-  provisioner "local-exec" {
-    command = "curl https://${azurerm_network_interface.advwaf01-nic.private_ip_address}:8443${var.rest_as3_uri} -u ${var.uname}:${var.upassword} -d @${var.rest_f5vmadvwaf01_as3_file} -k"
-
-  }
-
- }
 
 output "sg_id" {
   value = data.azurerm_subnet.cyber.id
@@ -249,7 +259,6 @@ output "sg_id" {
 output "sg_name" {
   value = data.azurerm_subnet.cyber.name
 }
-
 
 output "ext_subnet_gw" {
   value = local.ext_gw
@@ -261,4 +270,8 @@ output "f5vmadvwaf01_id" {
 
 output "f5vmadvwaf01_ext_private_ip" {
   value = azurerm_network_interface.advwaf01-nic.private_ip_address
+}
+
+output "f5vmadvwaf01_pip" {
+  value = azurerm_public_ip.advwaf01pip.ip_address
 }

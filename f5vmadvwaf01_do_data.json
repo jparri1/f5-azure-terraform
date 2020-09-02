@@ -32,7 +32,7 @@
         "myProvisioning": {
             "class": "Provision",
             "ltm": "nominal",
-			"asm": "nominal"
+            "asm": "nominal"
         },
         "default": {
             "class": "Route",
