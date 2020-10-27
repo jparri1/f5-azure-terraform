@@ -22,17 +22,8 @@
 		},
 		"policy-builder": {
 			"learnOnlyFromNonBotTraffic": false
-		},
-		"whitelist-ips": [ {
-			"ipAddress": "10.216.8.16", 
-			"ipMask": "255.255.255.0",
-			"trustedByPolicyBuilder": true
-			},
-			{
-			"ipAddress": "10.216.8.19", 
-			"ipMask": "255.255.255.0",
-			"trustedByPolicyBuilder": true
-			}]
+		}
+		
 	},
 		"modifications": [
             {
