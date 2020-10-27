@@ -1,6 +1,6 @@
 {
 	"policy": {
-		"name": "policy-3",
+		"name": "juiceshop",
 		"description": "Policy Example - Rapid Deployment",
 		"template": {
 			"name": "POLICY_TEMPLATE_RAPID_DEPLOYMENT"
