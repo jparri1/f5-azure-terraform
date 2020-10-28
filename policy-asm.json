@@ -5,7 +5,7 @@
 		"template": {
 			"name": "POLICY_TEMPLATE_RAPID_DEPLOYMENT"
 		},
-		"applicationLanguage": "utf-8",
+		"applicationLanguage": "auto-detect",
 		"enforcementMode": "blocking",
 		"server-technologies": [
 			{
