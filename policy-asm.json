@@ -6,7 +6,7 @@
 			"name": "POLICY_TEMPLATE_RAPID_DEPLOYMENT"
 		},
 		"enforcementMode": "transparent",
-		"applicationLanguage": "utf-8",
+		"applicationLanguage": "utf-8"
 		"server-technologies": [
 			{
 				"serverTechnologyName": "MySQL"
